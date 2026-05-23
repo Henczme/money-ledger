@@ -102,15 +102,28 @@ const els = {
 
 init();
 
+function on(element, eventName, handler, options) {
+  if (!element) return;
+  element.addEventListener(eventName, handler, options);
+}
+
+function setValue(element, value) {
+  if (element) element.value = value;
+}
+
+function setText(element, value) {
+  if (element) element.textContent = value;
+}
+
 function init() {
   registerServiceWorker();
   runMonthlyMaintenance();
   bindMobileInputFallback();
-  els.date.value = todayIso;
-  els.assetDate.value = todayIso;
-  els.baseCurrency.value = state.settings.baseCurrency;
-  els.eurCnyRate.value = state.settings.eurCnyRate;
-  els.closeDay.value = state.settings.closeDay;
+  setValue(els.date, todayIso);
+  setValue(els.assetDate, todayIso);
+  setValue(els.baseCurrency, state.settings.baseCurrency);
+  setValue(els.eurCnyRate, state.settings.eurCnyRate);
+  setValue(els.closeDay, state.settings.closeDay);
   fillSelects();
   bindEvents();
   render();
@@ -127,7 +140,11 @@ function bindMobileInputFallback() {
     });
     input.addEventListener("touchend", () => {
       setTimeout(() => {
-        input.focus({ preventScroll: true });
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
         const end = input.value.length;
         if (input.setSelectionRange) input.setSelectionRange(end, end);
       }, 0);
@@ -157,77 +174,77 @@ function bindEvents() {
     });
   });
 
-  els.entryForm.addEventListener("submit", (event) => {
+  on(els.entryForm, "submit", (event) => {
     event.preventDefault();
     addRecord();
   });
-  els.investmentForm.addEventListener("submit", (event) => {
+  on(els.investmentForm, "submit", (event) => {
     event.preventDefault();
     addInvestment();
   });
-  els.parseButton.addEventListener("click", parseSmartText);
-  els.search.addEventListener("input", renderRecords);
-  els.baseCurrency.addEventListener("change", () => {
+  on(els.parseButton, "click", parseSmartText);
+  on(els.search, "input", renderRecords);
+  on(els.baseCurrency, "change", () => {
     state.settings.baseCurrency = els.baseCurrency.value;
     saveState();
     render();
   });
-  els.saveRate.addEventListener("click", () => {
+  on(els.saveRate, "click", () => {
     state.settings.eurCnyRate = normalizeNumber(els.eurCnyRate.value) || state.settings.eurCnyRate;
     saveState();
     render();
   });
-  els.saveCloseDay.addEventListener("click", () => {
+  on(els.saveCloseDay, "click", () => {
     state.settings.closeDay = clampDay(els.closeDay.value);
     els.closeDay.value = state.settings.closeDay;
     runMonthlyMaintenance();
     saveState();
     render();
   });
-  els.addAccount.addEventListener("click", addAccount);
-  els.recurringForm.addEventListener("submit", (event) => {
+  on(els.addAccount, "click", addAccount);
+  on(els.recurringForm, "submit", (event) => {
     event.preventDefault();
     addRecurring();
   });
-  els.recurringType.addEventListener("change", fillRecurringCategory);
-  els.templateForm.addEventListener("submit", (event) => {
+  on(els.recurringType, "change", fillRecurringCategory);
+  on(els.templateForm, "submit", (event) => {
     event.preventDefault();
     addTemplate();
   });
-  els.templateType.addEventListener("change", fillTemplateCategory);
-  document.querySelector("#exportJson").addEventListener("click", exportJson);
-  document.querySelector("#exportCsv").addEventListener("click", exportCsv);
-  els.exportMonthXls.addEventListener("click", () => exportMonthXls(currentMonthKey()));
-  document.querySelector("#importJson").addEventListener("change", importJson);
+  on(els.templateType, "change", fillTemplateCategory);
+  on(document.querySelector("#exportJson"), "click", exportJson);
+  on(document.querySelector("#exportCsv"), "click", exportCsv);
+  on(els.exportMonthXls, "click", () => exportMonthXls(currentMonthKey()));
+  on(document.querySelector("#importJson"), "change", importJson);
 }
 
 function switchView(view) {
   currentView = view;
   const titles = { dashboard: "总览", add: "记一笔", records: "流水", invest: "投资", settings: "设置" };
-  els.viewTitle.textContent = titles[view];
+  setText(els.viewTitle, titles[view]);
   document.querySelectorAll(".tab").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
   document.querySelectorAll(".view").forEach((section) => section.classList.remove("active"));
-  document.querySelector(`#${view}View`).classList.add("active");
+  document.querySelector(`#${view}View`)?.classList.add("active");
   render();
 }
 
 function fillSelects() {
-  els.category.innerHTML = categories[activeType].map((name) => `<option value="${name}">${name}</option>`).join("");
-  els.account.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  els.recurringAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  els.templateAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  if (els.category) els.category.innerHTML = categories[activeType].map((name) => `<option value="${name}">${name}</option>`).join("");
+  if (els.account) els.account.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  if (els.recurringAccount) els.recurringAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  if (els.templateAccount) els.templateAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
   fillRecurringCategory();
   fillTemplateCategory();
 }
 
 function fillRecurringCategory() {
   const type = els.recurringType?.value || "income";
-  els.recurringCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
+  if (els.recurringCategory) els.recurringCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
 }
 
 function fillTemplateCategory() {
   const type = els.templateType?.value || "expense";
-  els.templateCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
+  if (els.templateCategory) els.templateCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
 }
 
 function addRecord() {
@@ -245,8 +262,8 @@ function addRecord() {
     note: els.note.value.trim()
   });
   saveState();
-  els.entryForm.reset();
-  els.date.value = todayIso;
+  els.entryForm?.reset();
+  setValue(els.date, todayIso);
   fillSelects();
   switchView("dashboard");
   render();
@@ -265,8 +282,8 @@ function addInvestment() {
     note: els.assetNote.value.trim()
   });
   saveState();
-  els.investmentForm.reset();
-  els.assetDate.value = todayIso;
+  els.investmentForm?.reset();
+  setValue(els.assetDate, todayIso);
   render();
 }
 
@@ -285,8 +302,8 @@ function addRecurring() {
     account: els.recurringAccount.value
   });
   saveState();
-  els.recurringForm.reset();
-  els.recurringDay.value = 1;
+  els.recurringForm?.reset();
+  setValue(els.recurringDay, 1);
   fillRecurringCategory();
   applyRecurringForMonth(currentMonthKey());
   saveState();
@@ -305,7 +322,7 @@ function addTemplate() {
     account: els.templateAccount.value
   });
   saveState();
-  els.templateForm.reset();
+  els.templateForm?.reset();
   fillTemplateCategory();
   render();
 }
@@ -316,14 +333,20 @@ function applyTemplate(templateId) {
   activeType = template.type;
   document.querySelectorAll("[data-type]").forEach((button) => button.classList.toggle("active", button.dataset.type === activeType));
   fillSelects();
-  els.amount.value = "";
-  els.currency.value = template.currency;
-  els.merchant.value = template.name;
-  els.category.value = template.category;
-  els.account.value = template.account;
-  els.note.value = "";
+  setValue(els.amount, "");
+  setValue(els.currency, template.currency);
+  setValue(els.merchant, template.name);
+  setValue(els.category, template.category);
+  setValue(els.account, template.account);
+  setValue(els.note, "");
   switchView("add");
-  setTimeout(() => els.amount.focus({ preventScroll: true }), 120);
+  setTimeout(() => {
+    try {
+      els.amount?.focus({ preventScroll: true });
+    } catch {
+      els.amount?.focus();
+    }
+  }, 120);
 }
 
 function parseSmartText() {
@@ -387,6 +410,7 @@ function render() {
 }
 
 function renderDashboard() {
+  if (!els.monthExpense || !els.monthIncome || !els.monthSaved) return;
   const month = currentMonthKey();
   const base = state.settings.baseCurrency;
   const other = base === "EUR" ? "CNY" : "EUR";
@@ -396,22 +420,23 @@ function renderDashboard() {
   const net = income - expense;
   const saveRate = income > 0 ? Math.round((net / income) * 100) : 0;
 
-  els.monthExpense.textContent = formatMoney(expense, base);
-  els.monthExpenseCny.textContent = `≈ ${formatMoney(convert(expense, base, other), other)}`;
-  els.monthIncome.textContent = formatMoney(income, base);
-  els.monthNet.textContent = `净额 ${formatMoney(net, base)}`;
-  els.monthSaved.textContent = formatMoney(net, base);
-  els.saveRateText.textContent = `储蓄率 ${saveRate}%`;
-  els.periodLabel.textContent = month;
+  setText(els.monthExpense, formatMoney(expense, base));
+  setText(els.monthExpenseCny, `≈ ${formatMoney(convert(expense, base, other), other)}`);
+  setText(els.monthIncome, formatMoney(income, base));
+  setText(els.monthNet, `净额 ${formatMoney(net, base)}`);
+  setText(els.monthSaved, formatMoney(net, base));
+  setText(els.saveRateText, `储蓄率 ${saveRate}%`);
+  setText(els.periodLabel, month);
 
   renderCategoryBars(monthly);
   renderIncomeDonut(income, expense, base);
   renderRecurringPreview();
   renderTemplateButtons();
-  els.recentRecords.innerHTML = sortedRecords(state.records).slice(0, 5).map(renderRecordCard).join("") || empty("还没有流水。");
+  if (els.recentRecords) els.recentRecords.innerHTML = sortedRecords(state.records).slice(0, 5).map(renderRecordCard).join("") || empty("还没有流水。");
 }
 
 function renderCategoryBars(records) {
+  if (!els.categoryBars) return;
   const base = state.settings.baseCurrency;
   const colors = ["#0f5d63", "#1f8b68", "#b48726", "#c65445", "#586f9c", "#7a5b9a", "#4f7f52", "#a05f3d"];
   const grouped = new Map();
@@ -435,6 +460,7 @@ function renderCategoryBars(records) {
 }
 
 function renderIncomeDonut(income, expense, base) {
+  if (!els.categoryDonut || !els.donutLegend) return;
   const spent = Math.max(0, expense);
   const remaining = Math.max(0, income - expense);
   const spentRate = income > 0 ? Math.min(100, Math.round((spent / income) * 100)) : 0;
@@ -463,6 +489,7 @@ function renderIncomeDonut(income, expense, base) {
 }
 
 function renderRecurringPreview() {
+  if (!els.recurringPreview) return;
   const items = state.recurring.slice(0, 5);
   els.recurringPreview.innerHTML = items.length
     ? items.map((item) => `
@@ -478,6 +505,7 @@ function renderRecurringPreview() {
 }
 
 function renderTemplateButtons() {
+  if (!els.templateButtons) return;
   els.templateButtons.innerHTML = state.templates.length
     ? state.templates.map((template) => `
       <button class="hint" data-template-id="${template.id}" type="button">
@@ -488,7 +516,8 @@ function renderTemplateButtons() {
 }
 
 function renderRecords() {
-  const query = els.search.value.trim().toLowerCase();
+  if (!els.recordList) return;
+  const query = els.search?.value.trim().toLowerCase() || "";
   const records = sortedRecords(state.records).filter((record) => {
     const text = `${record.merchant} ${record.category} ${record.account} ${record.note}`.toLowerCase();
     return !query || text.includes(query);
@@ -497,6 +526,7 @@ function renderRecords() {
 }
 
 function renderInvestments() {
+  if (!els.investmentList) return;
   const labels = { buy: "买入", sell: "卖出", dividend: "分红" };
   els.investmentList.innerHTML = [...state.investments]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -519,25 +549,25 @@ function renderInvestments() {
 }
 
 function renderSettings() {
-  els.accountList.innerHTML = state.settings.accounts.map((account) => `
+  if (els.accountList) els.accountList.innerHTML = state.settings.accounts.map((account) => `
     <div class="chip">
       <span>${escapeHtml(account)}</span>
       <button data-delete-account="${escapeHtml(account)}" type="button">删除</button>
     </div>
   `).join("");
-  els.recurringList.innerHTML = state.recurring.map((item) => `
+  if (els.recurringList) els.recurringList.innerHTML = state.recurring.map((item) => `
     <div class="chip tall-chip">
       <span>${escapeHtml(item.name)} · 每月 ${item.day} 日 · ${item.type === "income" ? "收入" : "支出"} · ${formatMoney(item.amount, item.currency)}</span>
       <button data-delete-recurring="${item.id}" type="button">删除</button>
     </div>
   `).join("") || empty("还没有固定项。");
-  els.templateList.innerHTML = state.templates.map((template) => `
+  if (els.templateList) els.templateList.innerHTML = state.templates.map((template) => `
     <div class="chip tall-chip">
       <span>${escapeHtml(template.name)} · ${template.type === "income" ? "收入" : "支出"} · ${escapeHtml(template.category)} · ${escapeHtml(template.currency)}</span>
       <button data-delete-template="${template.id}" type="button">删除</button>
     </div>
   `).join("") || empty("还没有模板。");
-  els.archiveList.innerHTML = state.archives.length
+  if (els.archiveList) els.archiveList.innerHTML = state.archives.length
     ? [...state.archives].sort((a, b) => b.month.localeCompare(a.month)).map((archive) => `
       <div class="chip tall-chip">
         <span>${escapeHtml(archive.month)} · 收入 ${formatMoney(archive.summary.income, "EUR")} · 支出 ${formatMoney(archive.summary.expense, "EUR")} · 结余 ${formatMoney(archive.summary.net, "EUR")}</span>
