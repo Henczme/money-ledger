@@ -30,7 +30,6 @@
           <button class="tab" data-view="invest" type="button">投资</button>
           <button class="tab" data-view="settings" type="button">设置</button>
         </nav>
-        <button class="ghost-button" id="resetDemo" type="button">重置示例</button>
       </aside>
 
       <main class="main">
@@ -55,20 +54,37 @@
               <p id="monthNet">净额 €0.00</p>
             </article>
             <article class="summary-card accent">
-              <span>投资成本</span>
-              <strong id="investmentCost">€0.00</strong>
-              <p id="investmentCount">0 条记录</p>
+              <span>本月结余</span>
+              <strong id="monthSaved">€0.00</strong>
+              <p id="saveRateText">储蓄率 0%</p>
             </article>
+          </div>
+
+          <div class="insight-grid">
+            <section class="panel chart-panel">
+              <div class="panel-head">
+                <h3>本月花费结构</h3>
+                <select id="baseCurrency">
+                  <option value="EUR">EUR</option>
+                  <option value="CNY">CNY</option>
+                </select>
+              </div>
+              <div class="donut-wrap">
+                <div class="donut" id="categoryDonut" aria-label="本月分类支出图">0%</div>
+                <div class="donut-legend" id="donutLegend"></div>
+              </div>
+            </section>
+            <section class="panel">
+              <h3>固定收支</h3>
+              <div class="compact-list" id="recurringPreview"></div>
+            </section>
           </div>
 
           <div class="dashboard-layout">
             <section class="panel">
               <div class="panel-head">
                 <h3>分类支出</h3>
-                <select id="baseCurrency">
-                  <option value="EUR">EUR</option>
-                  <option value="CNY">CNY</option>
-                </select>
+                <span class="subtle" id="periodLabel">本月</span>
               </div>
               <div class="category-bars" id="categoryBars"></div>
             </section>
@@ -210,6 +226,15 @@
               <p class="quiet">离线模式不会自动联网更新汇率，你可以偶尔手动调整。</p>
             </section>
             <section class="panel">
+              <h3>月度结算</h3>
+              <label>
+                <span>每月几号归档上月</span>
+                <input id="closeDay" inputmode="numeric" min="1" max="28" type="number" />
+              </label>
+              <button class="secondary-button full-width" id="saveCloseDay" type="button">保存结算日</button>
+              <p class="quiet">到结算日后，app 会把上个月自动保存为月度归档；浏览器不会在后台自动下载文件，需要你手动导出。</p>
+            </section>
+            <section class="panel">
               <h3>账户</h3>
               <div id="accountList" class="chip-list"></div>
               <div class="inline-form">
@@ -218,15 +243,63 @@
               </div>
             </section>
             <section class="panel">
-              <h3>数据</h3>
+              <h3>固定收入 / 支出</h3>
+              <form class="mini-form" id="recurringForm">
+                <div class="form-row">
+                  <label>
+                    <span>类型</span>
+                    <select id="recurringType">
+                      <option value="income">收入</option>
+                      <option value="expense">支出</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>每月几号</span>
+                    <input id="recurringDay" inputmode="numeric" min="1" max="28" type="number" value="1" />
+                  </label>
+                </div>
+                <label>
+                  <span>名称</span>
+                  <input id="recurringName" placeholder="工资、房租、网费..." />
+                </label>
+                <div class="form-row">
+                  <label>
+                    <span>金额</span>
+                    <input id="recurringAmount" inputmode="decimal" />
+                  </label>
+                  <label>
+                    <span>币种</span>
+                    <select id="recurringCurrency">
+                      <option value="EUR">EUR</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>分类</span>
+                  <select id="recurringCategory"></select>
+                </label>
+                <label>
+                  <span>账户</span>
+                  <select id="recurringAccount"></select>
+                </label>
+                <button class="secondary-button full-width" type="submit">添加固定项</button>
+              </form>
+              <div id="recurringList" class="chip-list"></div>
+            </section>
+            <section class="panel">
+              <h3>导出与归档</h3>
               <div class="button-stack">
-                <button class="secondary-button" id="exportJson" type="button">导出 JSON</button>
-                <button class="secondary-button" id="exportCsv" type="button">导出 CSV</button>
+                <button class="secondary-button" id="exportMonthXls" type="button">导出本月 Excel</button>
+                <button class="secondary-button" id="exportJson" type="button">备份 JSON</button>
+                <button class="secondary-button" id="exportCsv" type="button">导出流水 CSV</button>
               </div>
               <label class="import-label">
                 <span>导入 JSON</span>
                 <input id="importJson" type="file" accept="application/json" />
               </label>
+              <h3 class="section-subhead">月度归档</h3>
+              <div id="archiveList" class="chip-list"></div>
             </section>
           </div>
         </section>

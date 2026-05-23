@@ -23,54 +23,13 @@ const defaults = {
   settings: {
     baseCurrency: "EUR",
     eurCnyRate: 7.8,
+    closeDay: 1,
     accounts: ["现金", "银行卡", "支付宝", "微信", "券商"]
   },
-  records: [
-    {
-      id: crypto.randomUUID(),
-      type: "expense",
-      amount: 18.7,
-      currency: "EUR",
-      date: todayIso,
-      merchant: "LIDL",
-      category: "超市",
-      account: "银行卡",
-      note: "晚餐食材"
-    },
-    {
-      id: crypto.randomUUID(),
-      type: "expense",
-      amount: 48,
-      currency: "CNY",
-      date: todayIso,
-      merchant: "支付宝",
-      category: "餐饮",
-      account: "支付宝",
-      note: "午饭"
-    },
-    {
-      id: crypto.randomUUID(),
-      type: "income",
-      amount: 1200,
-      currency: "EUR",
-      date: todayIso,
-      merchant: "工资",
-      category: "工资",
-      account: "银行卡",
-      note: ""
-    }
-  ],
-  investments: [
-    {
-      id: crypto.randomUUID(),
-      asset: "VWCE ETF",
-      action: "buy",
-      amount: 100,
-      currency: "EUR",
-      date: todayIso,
-      note: "月度定投示例"
-    }
-  ]
+  recurring: [],
+  records: [],
+  investments: [],
+  archives: []
 };
 
 let state = loadState();
@@ -83,8 +42,12 @@ const els = {
   monthExpenseCny: document.querySelector("#monthExpenseCny"),
   monthIncome: document.querySelector("#monthIncome"),
   monthNet: document.querySelector("#monthNet"),
-  investmentCost: document.querySelector("#investmentCost"),
-  investmentCount: document.querySelector("#investmentCount"),
+  monthSaved: document.querySelector("#monthSaved"),
+  saveRateText: document.querySelector("#saveRateText"),
+  categoryDonut: document.querySelector("#categoryDonut"),
+  donutLegend: document.querySelector("#donutLegend"),
+  recurringPreview: document.querySelector("#recurringPreview"),
+  periodLabel: document.querySelector("#periodLabel"),
   categoryBars: document.querySelector("#categoryBars"),
   recentRecords: document.querySelector("#recentRecords"),
   recordList: document.querySelector("#recordList"),
@@ -110,19 +73,34 @@ const els = {
   assetNote: document.querySelector("#assetNote"),
   eurCnyRate: document.querySelector("#eurCnyRate"),
   saveRate: document.querySelector("#saveRate"),
+  closeDay: document.querySelector("#closeDay"),
+  saveCloseDay: document.querySelector("#saveCloseDay"),
   accountList: document.querySelector("#accountList"),
   newAccount: document.querySelector("#newAccount"),
-  addAccount: document.querySelector("#addAccount")
+  addAccount: document.querySelector("#addAccount"),
+  recurringForm: document.querySelector("#recurringForm"),
+  recurringType: document.querySelector("#recurringType"),
+  recurringDay: document.querySelector("#recurringDay"),
+  recurringName: document.querySelector("#recurringName"),
+  recurringAmount: document.querySelector("#recurringAmount"),
+  recurringCurrency: document.querySelector("#recurringCurrency"),
+  recurringCategory: document.querySelector("#recurringCategory"),
+  recurringAccount: document.querySelector("#recurringAccount"),
+  recurringList: document.querySelector("#recurringList"),
+  exportMonthXls: document.querySelector("#exportMonthXls"),
+  archiveList: document.querySelector("#archiveList")
 };
 
 init();
 
 function init() {
   registerServiceWorker();
+  runMonthlyMaintenance();
   els.date.value = todayIso;
   els.assetDate.value = todayIso;
   els.baseCurrency.value = state.settings.baseCurrency;
   els.eurCnyRate.value = state.settings.eurCnyRate;
+  els.closeDay.value = state.settings.closeDay;
   fillSelects();
   bindEvents();
   render();
@@ -177,15 +155,22 @@ function bindEvents() {
     saveState();
     render();
   });
-  els.addAccount.addEventListener("click", addAccount);
-  document.querySelector("#resetDemo").addEventListener("click", () => {
-    state = structuredClone(defaults);
-    fillSelects();
+  els.saveCloseDay.addEventListener("click", () => {
+    state.settings.closeDay = clampDay(els.closeDay.value);
+    els.closeDay.value = state.settings.closeDay;
+    runMonthlyMaintenance();
     saveState();
     render();
   });
+  els.addAccount.addEventListener("click", addAccount);
+  els.recurringForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    addRecurring();
+  });
+  els.recurringType.addEventListener("change", fillRecurringCategory);
   document.querySelector("#exportJson").addEventListener("click", exportJson);
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
+  els.exportMonthXls.addEventListener("click", () => exportMonthXls(currentMonthKey()));
   document.querySelector("#importJson").addEventListener("change", importJson);
 }
 
@@ -202,6 +187,13 @@ function switchView(view) {
 function fillSelects() {
   els.category.innerHTML = categories[activeType].map((name) => `<option value="${name}">${name}</option>`).join("");
   els.account.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  els.recurringAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  fillRecurringCategory();
+}
+
+function fillRecurringCategory() {
+  const type = els.recurringType?.value || "income";
+  els.recurringCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
 }
 
 function addRecord() {
@@ -241,6 +233,28 @@ function addInvestment() {
   saveState();
   els.investmentForm.reset();
   els.assetDate.value = todayIso;
+  render();
+}
+
+function addRecurring() {
+  const amount = normalizeNumber(els.recurringAmount.value);
+  const name = els.recurringName.value.trim();
+  if (!amount || !name) return;
+  state.recurring.push({
+    id: crypto.randomUUID(),
+    type: els.recurringType.value,
+    name,
+    amount,
+    currency: els.recurringCurrency.value,
+    day: clampDay(els.recurringDay.value),
+    category: els.recurringCategory.value,
+    account: els.recurringAccount.value
+  });
+  saveState();
+  els.recurringForm.reset();
+  els.recurringDay.value = 1;
+  fillRecurringCategory();
+  applyRecurringForMonth(currentMonthKey());
   render();
 }
 
@@ -305,24 +319,24 @@ function render() {
 }
 
 function renderDashboard() {
-  const month = todayIso.slice(0, 7);
+  const month = currentMonthKey();
   const monthly = state.records.filter((record) => record.date.startsWith(month));
   const expense = totalByType(monthly, "expense", "EUR");
   const income = totalByType(monthly, "income", "EUR");
   const net = income - expense;
-  const investmentCost = state.investments.reduce((sum, item) => {
-    const value = convert(item.amount, item.currency, "EUR");
-    return item.action === "buy" ? sum + value : item.action === "sell" ? sum - value : sum;
-  }, 0);
+  const saveRate = income > 0 ? Math.round((net / income) * 100) : 0;
 
   els.monthExpense.textContent = formatMoney(expense, "EUR");
   els.monthExpenseCny.textContent = `≈ ${formatMoney(convert(expense, "EUR", "CNY"), "CNY")}`;
   els.monthIncome.textContent = formatMoney(income, "EUR");
   els.monthNet.textContent = `净额 ${formatMoney(net, "EUR")}`;
-  els.investmentCost.textContent = formatMoney(investmentCost, "EUR");
-  els.investmentCount.textContent = `${state.investments.length} 条记录`;
+  els.monthSaved.textContent = formatMoney(net, "EUR");
+  els.saveRateText.textContent = `储蓄率 ${saveRate}%`;
+  els.periodLabel.textContent = month;
 
   renderCategoryBars(monthly);
+  renderDonut(monthly);
+  renderRecurringPreview();
   els.recentRecords.innerHTML = sortedRecords(state.records).slice(0, 5).map(renderRecordCard).join("") || empty("还没有流水。");
 }
 
@@ -342,6 +356,54 @@ function renderCategoryBars(records) {
       </div>
     `).join("")
     : empty("本月还没有支出。");
+}
+
+function renderDonut(records) {
+  const base = state.settings.baseCurrency;
+  const colors = ["#0f5d63", "#1f8b68", "#b48726", "#c65445", "#586f9c", "#7a5b9a", "#4f7f52", "#a05f3d"];
+  const grouped = new Map();
+  records.filter((record) => record.type === "expense").forEach((record) => {
+    grouped.set(record.category, (grouped.get(record.category) || 0) + convert(record.amount, record.currency, base));
+  });
+  const rows = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
+  const total = rows.reduce((sum, [, amount]) => sum + amount, 0);
+  if (!total) {
+    els.categoryDonut.style.background = "#e8ece6";
+    els.categoryDonut.textContent = "0%";
+    els.donutLegend.innerHTML = empty("本月还没有支出。");
+    return;
+  }
+
+  let cursor = 0;
+  const segments = rows.map(([category, amount], index) => {
+    const start = cursor;
+    const end = cursor + (amount / total) * 360;
+    cursor = end;
+    return `${colors[index % colors.length]} ${start}deg ${end}deg`;
+  });
+  els.categoryDonut.style.background = `conic-gradient(${segments.join(", ")})`;
+  els.categoryDonut.textContent = `${Math.round((rows[0][1] / total) * 100)}%`;
+  els.donutLegend.innerHTML = rows.map(([category, amount], index) => `
+    <div class="legend-row">
+      <span><i style="background:${colors[index % colors.length]}"></i>${escapeHtml(category)}</span>
+      <strong>${formatMoney(amount, base)}</strong>
+    </div>
+  `).join("");
+}
+
+function renderRecurringPreview() {
+  const items = state.recurring.slice(0, 5);
+  els.recurringPreview.innerHTML = items.length
+    ? items.map((item) => `
+      <article class="mini-card">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <p>${item.type === "income" ? "收入" : "支出"} · 每月 ${item.day} 日 · ${escapeHtml(item.category)}</p>
+        </div>
+        <span class="amount ${item.type}">${item.type === "expense" ? "-" : "+"}${formatMoney(item.amount, item.currency)}</span>
+      </article>
+    `).join("")
+    : empty("还没有固定收入或支出。");
 }
 
 function renderRecords() {
@@ -382,6 +444,20 @@ function renderSettings() {
       <button data-delete-account="${escapeHtml(account)}" type="button">删除</button>
     </div>
   `).join("");
+  els.recurringList.innerHTML = state.recurring.map((item) => `
+    <div class="chip tall-chip">
+      <span>${escapeHtml(item.name)} · 每月 ${item.day} 日 · ${item.type === "income" ? "收入" : "支出"} · ${formatMoney(item.amount, item.currency)}</span>
+      <button data-delete-recurring="${item.id}" type="button">删除</button>
+    </div>
+  `).join("") || empty("还没有固定项。");
+  els.archiveList.innerHTML = state.archives.length
+    ? [...state.archives].sort((a, b) => b.month.localeCompare(a.month)).map((archive) => `
+      <div class="chip tall-chip">
+        <span>${escapeHtml(archive.month)} · 收入 ${formatMoney(archive.summary.income, "EUR")} · 支出 ${formatMoney(archive.summary.expense, "EUR")} · 结余 ${formatMoney(archive.summary.net, "EUR")}</span>
+        <button data-export-archive="${archive.month}" type="button">导出</button>
+      </div>
+    `).join("")
+    : empty("还没有月度归档。");
 }
 
 function renderRecordCard(record) {
@@ -409,6 +485,8 @@ document.addEventListener("click", (event) => {
   const recordButton = event.target.closest("[data-delete-record]");
   const investmentButton = event.target.closest("[data-delete-investment]");
   const accountButton = event.target.closest("[data-delete-account]");
+  const recurringButton = event.target.closest("[data-delete-recurring]");
+  const archiveButton = event.target.closest("[data-export-archive]");
   if (recordButton) {
     state.records = state.records.filter((record) => record.id !== recordButton.dataset.deleteRecord);
   }
@@ -419,7 +497,14 @@ document.addEventListener("click", (event) => {
     state.settings.accounts = state.settings.accounts.filter((account) => account !== accountButton.dataset.deleteAccount);
     fillSelects();
   }
-  if (recordButton || investmentButton || accountButton) {
+  if (recurringButton) {
+    state.recurring = state.recurring.filter((item) => item.id !== recurringButton.dataset.deleteRecurring);
+  }
+  if (archiveButton) {
+    exportMonthXls(archiveButton.dataset.exportArchive);
+    return;
+  }
+  if (recordButton || investmentButton || accountButton || recurringButton) {
     saveState();
     render();
   }
@@ -433,6 +518,64 @@ function addAccount() {
   fillSelects();
   saveState();
   render();
+}
+
+function runMonthlyMaintenance() {
+  applyRecurringForMonth(currentMonthKey());
+  archivePreviousMonthIfNeeded();
+  saveState();
+}
+
+function applyRecurringForMonth(month) {
+  state.recurring.forEach((item) => {
+    const existing = state.records.some((record) => record.recurringId === item.id && record.recurringMonth === month);
+    if (existing) return;
+    state.records.push({
+      id: crypto.randomUUID(),
+      type: item.type,
+      amount: item.amount,
+      currency: item.currency,
+      date: `${month}-${String(item.day).padStart(2, "0")}`,
+      merchant: item.name,
+      category: item.category,
+      account: item.account,
+      note: "固定收支自动生成",
+      recurringId: item.id,
+      recurringMonth: month
+    });
+  });
+}
+
+function archivePreviousMonthIfNeeded() {
+  const today = new Date();
+  const closeDay = Number(state.settings.closeDay) || 1;
+  if (today.getDate() < closeDay) return;
+  const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const month = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`;
+  if (state.archives.some((archive) => archive.month === month)) return;
+  const records = state.records.filter((record) => record.date.startsWith(month));
+  if (!records.length) return;
+  state.archives.push(buildArchive(month, records));
+}
+
+function buildArchive(month, records) {
+  const income = totalByType(records, "income", "EUR");
+  const expense = totalByType(records, "expense", "EUR");
+  const byCategory = {};
+  records.filter((record) => record.type === "expense").forEach((record) => {
+    byCategory[record.category] = (byCategory[record.category] || 0) + convert(record.amount, record.currency, "EUR");
+  });
+  return {
+    month,
+    createdAt: new Date().toISOString(),
+    summary: {
+      income,
+      expense,
+      net: income - expense,
+      saveRate: income > 0 ? Math.round(((income - expense) / income) * 100) : 0,
+      byCategory
+    }
+  };
 }
 
 function totalByType(records, type, currency) {
@@ -461,6 +604,10 @@ function formatMoney(amount, currency) {
   }).format(amount);
 }
 
+function formatNumber(amount) {
+  return Number(amount || 0).toFixed(2);
+}
+
 function normalizeNumber(value) {
   return Number(String(value).replace(",", ".").replace(/[^\d.-]/g, ""));
 }
@@ -470,6 +617,15 @@ function localIsoDate(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function currentMonthKey() {
+  return todayIso.slice(0, 7);
+}
+
+function clampDay(value) {
+  const day = Math.round(normalizeNumber(value) || 1);
+  return Math.max(1, Math.min(28, day));
 }
 
 function saveState() {
@@ -484,7 +640,9 @@ function loadState() {
     return {
       settings: { ...defaults.settings, ...(parsed.settings || {}) },
       records: parsed.records || [],
-      investments: parsed.investments || []
+      investments: parsed.investments || [],
+      recurring: parsed.recurring || [],
+      archives: parsed.archives || []
     };
   } catch {
     return structuredClone(defaults);
@@ -501,6 +659,68 @@ function exportCsv() {
   download("money-ledger-records.csv", [header.join(","), ...rows].join("\n"), "text/csv");
 }
 
+function exportMonthXls(month) {
+  const records = state.records.filter((record) => record.date.startsWith(month));
+  const archive = state.archives.find((item) => item.month === month) || buildArchive(month, records);
+  const categoryRows = Object.entries(archive.summary.byCategory)
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, amount]) => `<tr><td>${escapeHtml(category)}</td><td>${formatNumber(amount)}</td></tr>`)
+    .join("");
+  const recordRows = records
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((record) => `
+      <tr>
+        <td>${escapeHtml(record.date)}</td>
+        <td>${record.type === "income" ? "收入" : "支出"}</td>
+        <td>${escapeHtml(record.merchant)}</td>
+        <td>${escapeHtml(record.category)}</td>
+        <td>${escapeHtml(record.account)}</td>
+        <td>${formatNumber(record.amount)}</td>
+        <td>${escapeHtml(record.currency)}</td>
+        <td>${formatNumber(convert(record.amount, record.currency, "EUR"))}</td>
+        <td>${escapeHtml(record.note || "")}</td>
+      </tr>
+    `)
+    .join("");
+  const html = `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          body { font-family: Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+          th, td { border: 1px solid #cfd7d1; padding: 8px; text-align: left; }
+          th { background: #edf1ec; }
+          .num { text-align: right; }
+        </style>
+      </head>
+      <body>
+        <h1>Money Ledger ${escapeHtml(month)} 月报</h1>
+        <table>
+          <tr><th>本月收入 EUR</th><th>本月支出 EUR</th><th>本月结余 EUR</th><th>储蓄率</th></tr>
+          <tr>
+            <td>${formatNumber(archive.summary.income)}</td>
+            <td>${formatNumber(archive.summary.expense)}</td>
+            <td>${formatNumber(archive.summary.net)}</td>
+            <td>${archive.summary.saveRate}%</td>
+          </tr>
+        </table>
+        <h2>分类支出</h2>
+        <table>
+          <tr><th>分类</th><th>金额 EUR</th></tr>
+          ${categoryRows || "<tr><td colspan=\"2\">无支出</td></tr>"}
+        </table>
+        <h2>流水</h2>
+        <table>
+          <tr><th>日期</th><th>类型</th><th>商户/来源</th><th>分类</th><th>账户</th><th>原金额</th><th>币种</th><th>折算 EUR</th><th>备注</th></tr>
+          ${recordRows || "<tr><td colspan=\"9\">无流水</td></tr>"}
+        </table>
+      </body>
+    </html>
+  `;
+  download(`money-ledger-${month}.xls`, html, "application/vnd.ms-excel");
+}
+
 function importJson(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -511,7 +731,9 @@ function importJson(event) {
       state = {
         settings: { ...defaults.settings, ...(imported.settings || {}) },
         records: imported.records || [],
-        investments: imported.investments || []
+        investments: imported.investments || [],
+        recurring: imported.recurring || [],
+        archives: imported.archives || []
       };
       saveState();
       fillSelects();
