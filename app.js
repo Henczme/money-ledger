@@ -105,6 +105,7 @@ init();
 function init() {
   registerServiceWorker();
   runMonthlyMaintenance();
+  bindMobileInputFallback();
   els.date.value = todayIso;
   els.assetDate.value = todayIso;
   els.baseCurrency.value = state.settings.baseCurrency;
@@ -113,6 +114,25 @@ function init() {
   fillSelects();
   bindEvents();
   render();
+}
+
+function bindMobileInputFallback() {
+  document.querySelectorAll("[data-numeric]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const cleaned = input.value
+        .replace(/[，。]/g, ".")
+        .replace(/[^\d.,-]/g, "")
+        .replace(/(?!^)-/g, "");
+      if (input.value !== cleaned) input.value = cleaned;
+    });
+    input.addEventListener("touchend", () => {
+      setTimeout(() => {
+        input.focus({ preventScroll: true });
+        const end = input.value.length;
+        if (input.setSelectionRange) input.setSelectionRange(end, end);
+      }, 0);
+    }, { passive: true });
+  });
 }
 
 function registerServiceWorker() {
@@ -303,7 +323,7 @@ function applyTemplate(templateId) {
   els.account.value = template.account;
   els.note.value = "";
   switchView("add");
-  els.amount.focus();
+  setTimeout(() => els.amount.focus({ preventScroll: true }), 120);
 }
 
 function parseSmartText() {

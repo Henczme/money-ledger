@@ -108,7 +108,7 @@
               </div>
               <label class="amount-field">
                 <span>金额</span>
-                <input id="amount" inputmode="decimal" placeholder="12.50" required />
+                <input id="amount" class="numeric-input" data-numeric inputmode="decimal" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" type="text" placeholder="12.50" required />
               </label>
               <div class="form-row">
                 <label>
@@ -188,7 +188,7 @@
               <div class="form-row">
                 <label>
                   <span>金额</span>
-                  <input id="assetAmount" inputmode="decimal" required />
+                  <input id="assetAmount" class="numeric-input" data-numeric inputmode="decimal" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" type="text" required />
                 </label>
                 <label>
                   <span>币种</span>
@@ -217,7 +217,7 @@
               <h3>汇率</h3>
               <label>
                 <span>1 EUR = 多少 CNY</span>
-                <input id="eurCnyRate" inputmode="decimal" />
+                <input id="eurCnyRate" class="numeric-input" data-numeric inputmode="decimal" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" type="text" />
               </label>
               <button class="secondary-button full-width" id="saveRate" type="button">保存汇率</button>
               <p class="quiet">离线模式不会自动联网更新汇率，你可以偶尔手动调整。</p>
@@ -226,7 +226,7 @@
               <h3>月度结算</h3>
               <label>
                 <span>每月几号归档上月</span>
-                <input id="closeDay" inputmode="numeric" min="1" max="28" type="number" />
+                <input id="closeDay" class="numeric-input" data-numeric inputmode="numeric" enterkeyhint="done" autocomplete="off" type="text" />
               </label>
               <button class="secondary-button full-width" id="saveCloseDay" type="button">保存结算日</button>
               <p class="quiet">到结算日后，app 会把上个月自动保存为月度归档；浏览器不会在后台自动下载文件，需要你手动导出。</p>
@@ -252,7 +252,7 @@
                   </label>
                   <label>
                     <span>每月几号</span>
-                    <input id="recurringDay" inputmode="numeric" min="1" max="28" type="number" value="1" />
+                    <input id="recurringDay" class="numeric-input" data-numeric inputmode="numeric" enterkeyhint="done" autocomplete="off" type="text" value="1" />
                   </label>
                 </div>
                 <label>
@@ -262,7 +262,7 @@
                 <div class="form-row">
                   <label>
                     <span>金额</span>
-                    <input id="recurringAmount" inputmode="decimal" />
+                    <input id="recurringAmount" class="numeric-input" data-numeric inputmode="decimal" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" type="text" />
                   </label>
                   <label>
                     <span>币种</span>
