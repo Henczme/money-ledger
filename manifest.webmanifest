@@ -1,0 +1,19 @@
+{
+  "name": "Money Ledger",
+  "short_name": "Ledger",
+  "description": "离线欧元和人民币记账、投资记录工具",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f1e8",
+  "theme_color": "#12312b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

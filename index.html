@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#12312b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Money Ledger" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Money Ledger</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">M</div>
+          <div>
+            <h1>Money Ledger</h1>
+            <p>欧元 / 人民币离线账本</p>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="视图切换">
+          <button class="tab active" data-view="dashboard" type="button">总览</button>
+          <button class="tab" data-view="add" type="button">记一笔</button>
+          <button class="tab" data-view="records" type="button">流水</button>
+          <button class="tab" data-view="invest" type="button">投资</button>
+          <button class="tab" data-view="settings" type="button">设置</button>
+        </nav>
+        <button class="ghost-button" id="resetDemo" type="button">重置示例</button>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">本地离线账本</p>
+            <h2 id="viewTitle">总览</h2>
+          </div>
+          <button class="primary-button" data-jump-add type="button">快速记账</button>
+        </header>
+
+        <section class="view active" id="dashboardView">
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span>本月支出</span>
+              <strong id="monthExpense">€0.00</strong>
+              <p id="monthExpenseCny">≈ ¥0.00</p>
+            </article>
+            <article class="summary-card positive">
+              <span>本月收入</span>
+              <strong id="monthIncome">€0.00</strong>
+              <p id="monthNet">净额 €0.00</p>
+            </article>
+            <article class="summary-card accent">
+              <span>投资成本</span>
+              <strong id="investmentCost">€0.00</strong>
+              <p id="investmentCount">0 条记录</p>
+            </article>
+          </div>
+
+          <div class="dashboard-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>分类支出</h3>
+                <select id="baseCurrency">
+                  <option value="EUR">EUR</option>
+                  <option value="CNY">CNY</option>
+                </select>
+              </div>
+              <div class="category-bars" id="categoryBars"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>最近流水</h3>
+                <button class="icon-button" data-jump-add type="button" aria-label="新增">＋</button>
+              </div>
+              <div class="compact-list" id="recentRecords"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="addView">
+          <div class="entry-layout">
+            <form class="panel entry-panel" id="entryForm">
+              <h3>快速记一笔</h3>
+              <div class="type-toggle" role="group" aria-label="收支类型">
+                <button class="toggle active" data-type="expense" type="button">支出</button>
+                <button class="toggle" data-type="income" type="button">收入</button>
+              </div>
+              <label class="amount-field">
+                <span>金额</span>
+                <input id="amount" inputmode="decimal" placeholder="12.50" required />
+              </label>
+              <div class="form-row">
+                <label>
+                  <span>币种</span>
+                  <select id="currency">
+                    <option value="EUR">EUR 欧元</option>
+                    <option value="CNY">CNY 人民币</option>
+                  </select>
+                </label>
+                <label>
+                  <span>日期</span>
+                  <input id="date" type="date" required />
+                </label>
+              </div>
+              <label>
+                <span>商户 / 来源</span>
+                <input id="merchant" placeholder="REWE、支付宝、工资..." />
+              </label>
+              <label>
+                <span>分类</span>
+                <select id="category"></select>
+              </label>
+              <label>
+                <span>账户</span>
+                <select id="account"></select>
+              </label>
+              <label>
+                <span>备注</span>
+                <textarea id="note" rows="3" placeholder="可选"></textarea>
+              </label>
+              <button class="primary-button full-width" type="submit">保存这一笔</button>
+            </form>
+
+            <section class="panel parse-panel">
+              <h3>粘贴识别</h3>
+              <textarea id="smartText" rows="6" placeholder="例如：REWE 23.40 eur groceries&#10;或：支付宝 午饭 48 元 餐饮"></textarea>
+              <button class="secondary-button full-width" id="parseButton" type="button">识别并填入</button>
+              <div class="hint-grid">
+                <button class="hint" data-example="LIDL 18.70 eur groceries" type="button">LIDL 18.70</button>
+                <button class="hint" data-example="支付宝 火锅 168 元 餐饮" type="button">火锅 168 元</button>
+                <button class="hint" data-example="工资 1200 eur income" type="button">工资 1200</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="recordsView">
+          <div class="toolbar">
+            <div>
+              <h3>流水记录</h3>
+              <p>按日期倒序，支持搜索和筛选</p>
+            </div>
+            <input id="search" placeholder="搜索商户、备注、分类" />
+          </div>
+          <div class="record-list" id="recordList"></div>
+        </section>
+
+        <section class="view" id="investView">
+          <div class="entry-layout">
+            <form class="panel entry-panel" id="investmentForm">
+              <h3>投资记录</h3>
+              <label>
+                <span>标的</span>
+                <input id="assetName" placeholder="ETF、股票、基金、BTC..." required />
+              </label>
+              <div class="form-row">
+                <label>
+                  <span>动作</span>
+                  <select id="assetAction">
+                    <option value="buy">买入</option>
+                    <option value="sell">卖出</option>
+                    <option value="dividend">分红</option>
+                  </select>
+                </label>
+                <label>
+                  <span>日期</span>
+                  <input id="assetDate" type="date" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  <span>金额</span>
+                  <input id="assetAmount" inputmode="decimal" required />
+                </label>
+                <label>
+                  <span>币种</span>
+                  <select id="assetCurrency">
+                    <option value="EUR">EUR</option>
+                    <option value="CNY">CNY</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>备注</span>
+                <textarea id="assetNote" rows="3"></textarea>
+              </label>
+              <button class="primary-button full-width" type="submit">保存投资记录</button>
+            </form>
+            <section class="panel">
+              <h3>投资流水</h3>
+              <div class="record-list compact" id="investmentList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView">
+          <div class="settings-grid">
+            <section class="panel">
+              <h3>汇率</h3>
+              <label>
+                <span>1 EUR = 多少 CNY</span>
+                <input id="eurCnyRate" inputmode="decimal" />
+              </label>
+              <button class="secondary-button full-width" id="saveRate" type="button">保存汇率</button>
+              <p class="quiet">离线模式不会自动联网更新汇率，你可以偶尔手动调整。</p>
+            </section>
+            <section class="panel">
+              <h3>账户</h3>
+              <div id="accountList" class="chip-list"></div>
+              <div class="inline-form">
+                <input id="newAccount" placeholder="新增账户名" />
+                <button class="secondary-button" id="addAccount" type="button">添加</button>
+              </div>
+            </section>
+            <section class="panel">
+              <h3>数据</h3>
+              <div class="button-stack">
+                <button class="secondary-button" id="exportJson" type="button">导出 JSON</button>
+                <button class="secondary-button" id="exportCsv" type="button">导出 CSV</button>
+              </div>
+              <label class="import-label">
+                <span>导入 JSON</span>
+                <input id="importJson" type="file" accept="application/json" />
+              </label>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
