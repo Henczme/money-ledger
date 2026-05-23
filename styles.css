@@ -388,6 +388,19 @@ label {
   font-size: 14px;
 }
 
+.bar-top span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-top i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 .bar-track {
   height: 12px;
   overflow: hidden;

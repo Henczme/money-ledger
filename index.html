@@ -63,14 +63,14 @@
           <div class="insight-grid">
             <section class="panel chart-panel">
               <div class="panel-head">
-                <h3>本月花费结构</h3>
+                <h3>本月收入使用情况</h3>
                 <select id="baseCurrency">
                   <option value="EUR">EUR</option>
                   <option value="CNY">CNY</option>
                 </select>
               </div>
               <div class="donut-wrap">
-                <div class="donut" id="categoryDonut" aria-label="本月分类支出图">0%</div>
+                <div class="donut" id="categoryDonut" aria-label="本月已花和剩余比例">0%</div>
                 <div class="donut-legend" id="donutLegend"></div>
               </div>
             </section>
@@ -143,14 +143,11 @@
             </form>
 
             <section class="panel parse-panel">
-              <h3>粘贴识别</h3>
+              <h3>常用模板</h3>
+              <div class="hint-grid" id="templateButtons"></div>
+              <h3 class="section-subhead">粘贴识别</h3>
               <textarea id="smartText" rows="6" placeholder="例如：REWE 23.40 eur groceries&#10;或：支付宝 午饭 48 元 餐饮"></textarea>
               <button class="secondary-button full-width" id="parseButton" type="button">识别并填入</button>
-              <div class="hint-grid">
-                <button class="hint" data-example="LIDL 18.70 eur groceries" type="button">LIDL 18.70</button>
-                <button class="hint" data-example="支付宝 火锅 168 元 餐饮" type="button">火锅 168 元</button>
-                <button class="hint" data-example="工资 1200 eur income" type="button">工资 1200</button>
-              </div>
             </section>
           </div>
         </section>
@@ -286,6 +283,41 @@
                 <button class="secondary-button full-width" type="submit">添加固定项</button>
               </form>
               <div id="recurringList" class="chip-list"></div>
+            </section>
+            <section class="panel">
+              <h3>记账模板</h3>
+              <form class="mini-form" id="templateForm">
+                <div class="form-row">
+                  <label>
+                    <span>类型</span>
+                    <select id="templateType">
+                      <option value="expense">支出</option>
+                      <option value="income">收入</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>默认币种</span>
+                    <select id="templateCurrency">
+                      <option value="EUR">EUR</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>模板名</span>
+                  <input id="templateName" placeholder="REWE、LIDL、常去餐馆..." />
+                </label>
+                <label>
+                  <span>默认分类</span>
+                  <select id="templateCategory"></select>
+                </label>
+                <label>
+                  <span>默认账户</span>
+                  <select id="templateAccount"></select>
+                </label>
+                <button class="secondary-button full-width" type="submit">添加模板</button>
+              </form>
+              <div id="templateList" class="chip-list"></div>
             </section>
             <section class="panel">
               <h3>导出与归档</h3>

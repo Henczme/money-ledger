@@ -26,6 +26,7 @@ const defaults = {
     closeDay: 1,
     accounts: ["现金", "银行卡", "支付宝", "微信", "券商"]
   },
+  templates: [],
   recurring: [],
   records: [],
   investments: [],
@@ -46,6 +47,7 @@ const els = {
   saveRateText: document.querySelector("#saveRateText"),
   categoryDonut: document.querySelector("#categoryDonut"),
   donutLegend: document.querySelector("#donutLegend"),
+  templateButtons: document.querySelector("#templateButtons"),
   recurringPreview: document.querySelector("#recurringPreview"),
   periodLabel: document.querySelector("#periodLabel"),
   categoryBars: document.querySelector("#categoryBars"),
@@ -87,6 +89,13 @@ const els = {
   recurringCategory: document.querySelector("#recurringCategory"),
   recurringAccount: document.querySelector("#recurringAccount"),
   recurringList: document.querySelector("#recurringList"),
+  templateForm: document.querySelector("#templateForm"),
+  templateType: document.querySelector("#templateType"),
+  templateName: document.querySelector("#templateName"),
+  templateCurrency: document.querySelector("#templateCurrency"),
+  templateCategory: document.querySelector("#templateCategory"),
+  templateAccount: document.querySelector("#templateAccount"),
+  templateList: document.querySelector("#templateList"),
   exportMonthXls: document.querySelector("#exportMonthXls"),
   archiveList: document.querySelector("#archiveList")
 };
@@ -128,13 +137,6 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll("[data-example]").forEach((button) => {
-    button.addEventListener("click", () => {
-      els.smartText.value = button.dataset.example;
-      parseSmartText();
-    });
-  });
-
   els.entryForm.addEventListener("submit", (event) => {
     event.preventDefault();
     addRecord();
@@ -168,6 +170,11 @@ function bindEvents() {
     addRecurring();
   });
   els.recurringType.addEventListener("change", fillRecurringCategory);
+  els.templateForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    addTemplate();
+  });
+  els.templateType.addEventListener("change", fillTemplateCategory);
   document.querySelector("#exportJson").addEventListener("click", exportJson);
   document.querySelector("#exportCsv").addEventListener("click", exportCsv);
   els.exportMonthXls.addEventListener("click", () => exportMonthXls(currentMonthKey()));
@@ -188,12 +195,19 @@ function fillSelects() {
   els.category.innerHTML = categories[activeType].map((name) => `<option value="${name}">${name}</option>`).join("");
   els.account.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
   els.recurringAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  els.templateAccount.innerHTML = state.settings.accounts.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
   fillRecurringCategory();
+  fillTemplateCategory();
 }
 
 function fillRecurringCategory() {
   const type = els.recurringType?.value || "income";
   els.recurringCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
+}
+
+function fillTemplateCategory() {
+  const type = els.templateType?.value || "expense";
+  els.templateCategory.innerHTML = categories[type].map((name) => `<option value="${name}">${name}</option>`).join("");
 }
 
 function addRecord() {
@@ -255,7 +269,41 @@ function addRecurring() {
   els.recurringDay.value = 1;
   fillRecurringCategory();
   applyRecurringForMonth(currentMonthKey());
+  saveState();
   render();
+}
+
+function addTemplate() {
+  const name = els.templateName.value.trim();
+  if (!name) return;
+  state.templates.push({
+    id: crypto.randomUUID(),
+    type: els.templateType.value,
+    name,
+    currency: els.templateCurrency.value,
+    category: els.templateCategory.value,
+    account: els.templateAccount.value
+  });
+  saveState();
+  els.templateForm.reset();
+  fillTemplateCategory();
+  render();
+}
+
+function applyTemplate(templateId) {
+  const template = state.templates.find((item) => item.id === templateId);
+  if (!template) return;
+  activeType = template.type;
+  document.querySelectorAll("[data-type]").forEach((button) => button.classList.toggle("active", button.dataset.type === activeType));
+  fillSelects();
+  els.amount.value = "";
+  els.currency.value = template.currency;
+  els.merchant.value = template.name;
+  els.category.value = template.category;
+  els.account.value = template.account;
+  els.note.value = "";
+  switchView("add");
+  els.amount.focus();
 }
 
 function parseSmartText() {
@@ -320,45 +368,30 @@ function render() {
 
 function renderDashboard() {
   const month = currentMonthKey();
+  const base = state.settings.baseCurrency;
+  const other = base === "EUR" ? "CNY" : "EUR";
   const monthly = state.records.filter((record) => record.date.startsWith(month));
-  const expense = totalByType(monthly, "expense", "EUR");
-  const income = totalByType(monthly, "income", "EUR");
+  const expense = totalByType(monthly, "expense", base);
+  const income = totalByType(monthly, "income", base);
   const net = income - expense;
   const saveRate = income > 0 ? Math.round((net / income) * 100) : 0;
 
-  els.monthExpense.textContent = formatMoney(expense, "EUR");
-  els.monthExpenseCny.textContent = `≈ ${formatMoney(convert(expense, "EUR", "CNY"), "CNY")}`;
-  els.monthIncome.textContent = formatMoney(income, "EUR");
-  els.monthNet.textContent = `净额 ${formatMoney(net, "EUR")}`;
-  els.monthSaved.textContent = formatMoney(net, "EUR");
+  els.monthExpense.textContent = formatMoney(expense, base);
+  els.monthExpenseCny.textContent = `≈ ${formatMoney(convert(expense, base, other), other)}`;
+  els.monthIncome.textContent = formatMoney(income, base);
+  els.monthNet.textContent = `净额 ${formatMoney(net, base)}`;
+  els.monthSaved.textContent = formatMoney(net, base);
   els.saveRateText.textContent = `储蓄率 ${saveRate}%`;
   els.periodLabel.textContent = month;
 
   renderCategoryBars(monthly);
-  renderDonut(monthly);
+  renderIncomeDonut(income, expense, base);
   renderRecurringPreview();
+  renderTemplateButtons();
   els.recentRecords.innerHTML = sortedRecords(state.records).slice(0, 5).map(renderRecordCard).join("") || empty("还没有流水。");
 }
 
 function renderCategoryBars(records) {
-  const base = state.settings.baseCurrency;
-  const grouped = new Map();
-  records.filter((record) => record.type === "expense").forEach((record) => {
-    grouped.set(record.category, (grouped.get(record.category) || 0) + convert(record.amount, record.currency, base));
-  });
-  const rows = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
-  const max = rows[0]?.[1] || 1;
-  els.categoryBars.innerHTML = rows.length
-    ? rows.map(([category, amount]) => `
-      <div class="bar-row">
-        <div class="bar-top"><span>${escapeHtml(category)}</span><strong>${formatMoney(amount, base)}</strong></div>
-        <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(5, (amount / max) * 100)}%"></div></div>
-      </div>
-    `).join("")
-    : empty("本月还没有支出。");
-}
-
-function renderDonut(records) {
   const base = state.settings.baseCurrency;
   const colors = ["#0f5d63", "#1f8b68", "#b48726", "#c65445", "#586f9c", "#7a5b9a", "#4f7f52", "#a05f3d"];
   const grouped = new Map();
@@ -366,29 +399,45 @@ function renderDonut(records) {
     grouped.set(record.category, (grouped.get(record.category) || 0) + convert(record.amount, record.currency, base));
   });
   const rows = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
+  const max = rows[0]?.[1] || 1;
   const total = rows.reduce((sum, [, amount]) => sum + amount, 0);
-  if (!total) {
+  els.categoryBars.innerHTML = rows.length
+    ? rows.map(([category, amount], index) => `
+      <div class="bar-row">
+        <div class="bar-top">
+          <span><i style="background:${colors[index % colors.length]}"></i>${escapeHtml(category)}</span>
+          <strong>${formatMoney(amount, base)} · ${Math.round((amount / total) * 100)}%</strong>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(5, (amount / max) * 100)}%; background:${colors[index % colors.length]}"></div></div>
+      </div>
+    `).join("")
+    : empty("本月还没有支出。");
+}
+
+function renderIncomeDonut(income, expense, base) {
+  const spent = Math.max(0, expense);
+  const remaining = Math.max(0, income - expense);
+  const spentRate = income > 0 ? Math.min(100, Math.round((spent / income) * 100)) : 0;
+  const remainingRate = income > 0 ? Math.max(0, 100 - spentRate) : 0;
+  if (!income) {
     els.categoryDonut.style.background = "#e8ece6";
-    els.categoryDonut.textContent = "0%";
-    els.donutLegend.innerHTML = empty("本月还没有支出。");
+    els.categoryDonut.textContent = "无收入";
+    els.donutLegend.innerHTML = empty("设置工资或记录收入后，这里会显示已花和剩余比例。");
     return;
   }
 
-  let cursor = 0;
-  const segments = rows.map(([category, amount], index) => {
-    const start = cursor;
-    const end = cursor + (amount / total) * 360;
-    cursor = end;
-    return `${colors[index % colors.length]} ${start}deg ${end}deg`;
-  });
-  els.categoryDonut.style.background = `conic-gradient(${segments.join(", ")})`;
-  els.categoryDonut.textContent = `${Math.round((rows[0][1] / total) * 100)}%`;
-  els.donutLegend.innerHTML = rows.map(([category, amount], index) => `
+  els.categoryDonut.style.background = `conic-gradient(var(--red) 0deg ${spentRate * 3.6}deg, var(--green) ${spentRate * 3.6}deg 360deg)`;
+  els.categoryDonut.textContent = `已花 ${spentRate}%`;
+  els.donutLegend.innerHTML = `
     <div class="legend-row">
-      <span><i style="background:${colors[index % colors.length]}"></i>${escapeHtml(category)}</span>
-      <strong>${formatMoney(amount, base)}</strong>
+      <span><i style="background:var(--red)"></i>已花</span>
+      <strong>${formatMoney(spent, base)} · ${spentRate}%</strong>
     </div>
-  `).join("");
+    <div class="legend-row">
+      <span><i style="background:var(--green)"></i>剩余 / 可存</span>
+      <strong>${formatMoney(remaining, base)} · ${remainingRate}%</strong>
+    </div>
+  `;
 }
 
 function renderRecurringPreview() {
@@ -404,6 +453,16 @@ function renderRecurringPreview() {
       </article>
     `).join("")
     : empty("还没有固定收入或支出。");
+}
+
+function renderTemplateButtons() {
+  els.templateButtons.innerHTML = state.templates.length
+    ? state.templates.map((template) => `
+      <button class="hint" data-template-id="${template.id}" type="button">
+        ${escapeHtml(template.name)}
+      </button>
+    `).join("")
+    : empty("在设置里添加常用超市、餐馆或收入模板。");
 }
 
 function renderRecords() {
@@ -450,6 +509,12 @@ function renderSettings() {
       <button data-delete-recurring="${item.id}" type="button">删除</button>
     </div>
   `).join("") || empty("还没有固定项。");
+  els.templateList.innerHTML = state.templates.map((template) => `
+    <div class="chip tall-chip">
+      <span>${escapeHtml(template.name)} · ${template.type === "income" ? "收入" : "支出"} · ${escapeHtml(template.category)} · ${escapeHtml(template.currency)}</span>
+      <button data-delete-template="${template.id}" type="button">删除</button>
+    </div>
+  `).join("") || empty("还没有模板。");
   els.archiveList.innerHTML = state.archives.length
     ? [...state.archives].sort((a, b) => b.month.localeCompare(a.month)).map((archive) => `
       <div class="chip tall-chip">
@@ -462,6 +527,8 @@ function renderSettings() {
 
 function renderRecordCard(record) {
   const signed = record.type === "expense" ? "-" : "+";
+  const base = state.settings.baseCurrency;
+  const converted = record.currency === base ? "" : `<div class="record-meta">≈ ${formatMoney(convert(record.amount, record.currency, base), base)}</div>`;
   return `
     <article class="record-card">
       <div class="record-main">
@@ -475,6 +542,7 @@ function renderRecordCard(record) {
       </div>
       <div>
         <div class="amount ${record.type}">${signed}${formatMoney(record.amount, record.currency)}</div>
+        ${converted}
         <button data-delete-record="${record.id}" type="button">删除</button>
       </div>
     </article>
@@ -486,6 +554,8 @@ document.addEventListener("click", (event) => {
   const investmentButton = event.target.closest("[data-delete-investment]");
   const accountButton = event.target.closest("[data-delete-account]");
   const recurringButton = event.target.closest("[data-delete-recurring]");
+  const templateButton = event.target.closest("[data-delete-template]");
+  const templateApplyButton = event.target.closest("[data-template-id]");
   const archiveButton = event.target.closest("[data-export-archive]");
   if (recordButton) {
     state.records = state.records.filter((record) => record.id !== recordButton.dataset.deleteRecord);
@@ -500,11 +570,18 @@ document.addEventListener("click", (event) => {
   if (recurringButton) {
     state.recurring = state.recurring.filter((item) => item.id !== recurringButton.dataset.deleteRecurring);
   }
+  if (templateButton) {
+    state.templates = state.templates.filter((item) => item.id !== templateButton.dataset.deleteTemplate);
+  }
+  if (templateApplyButton) {
+    applyTemplate(templateApplyButton.dataset.templateId);
+    return;
+  }
   if (archiveButton) {
     exportMonthXls(archiveButton.dataset.exportArchive);
     return;
   }
-  if (recordButton || investmentButton || accountButton || recurringButton) {
+  if (recordButton || investmentButton || accountButton || recurringButton || templateButton) {
     saveState();
     render();
   }
@@ -641,6 +718,7 @@ function loadState() {
       settings: { ...defaults.settings, ...(parsed.settings || {}) },
       records: parsed.records || [],
       investments: parsed.investments || [],
+      templates: parsed.templates || [],
       recurring: parsed.recurring || [],
       archives: parsed.archives || []
     };
@@ -732,6 +810,7 @@ function importJson(event) {
         settings: { ...defaults.settings, ...(imported.settings || {}) },
         records: imported.records || [],
         investments: imported.investments || [],
+        templates: imported.templates || [],
         recurring: imported.recurring || [],
         archives: imported.archives || []
       };
