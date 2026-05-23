@@ -228,8 +228,8 @@ function addRecord() {
   els.entryForm.reset();
   els.date.value = todayIso;
   fillSelects();
-  render();
   switchView("dashboard");
+  render();
 }
 
 function addInvestment() {
@@ -421,21 +421,23 @@ function renderIncomeDonut(income, expense, base) {
   const remainingRate = income > 0 ? Math.max(0, 100 - spentRate) : 0;
   if (!income) {
     els.categoryDonut.style.background = "#e8ece6";
-    els.categoryDonut.textContent = "无收入";
+    els.categoryDonut.textContent = "";
+    els.categoryDonut.setAttribute("aria-label", "本月还没有收入");
     els.donutLegend.innerHTML = empty("设置工资或记录收入后，这里会显示已花和剩余比例。");
     return;
   }
 
   els.categoryDonut.style.background = `conic-gradient(var(--red) 0deg ${spentRate * 3.6}deg, var(--green) ${spentRate * 3.6}deg 360deg)`;
-  els.categoryDonut.textContent = `已花 ${spentRate}%`;
+  els.categoryDonut.textContent = "";
+  els.categoryDonut.setAttribute("aria-label", `本月已花 ${spentRate}%，剩余 ${remainingRate}%`);
   els.donutLegend.innerHTML = `
     <div class="legend-row">
-      <span><i style="background:var(--red)"></i>已花</span>
-      <strong>${formatMoney(spent, base)} · ${spentRate}%</strong>
+      <span><i style="background:var(--red)"></i><em>已花</em></span>
+      <strong>${formatMoney(spent, base)}<small>${spentRate}%</small></strong>
     </div>
     <div class="legend-row">
-      <span><i style="background:var(--green)"></i>剩余 / 可存</span>
-      <strong>${formatMoney(remaining, base)} · ${remainingRate}%</strong>
+      <span><i style="background:var(--green)"></i><em>剩余 / 可存</em></span>
+      <strong>${formatMoney(remaining, base)}<small>${remainingRate}%</small></strong>
     </div>
   `;
 }

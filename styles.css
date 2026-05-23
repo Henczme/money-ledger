@@ -327,22 +327,26 @@ label {
   border-radius: 50%;
   background: #e8ece6;
   color: var(--ink);
-  font-size: 26px;
-  font-weight: 900;
-  box-shadow: inset 0 0 0 34px #fff;
+  box-shadow: inset 0 0 0 42px #fff, 0 12px 32px rgba(18, 49, 43, 0.08);
 }
 
 .donut-legend {
   display: grid;
-  gap: 9px;
+  gap: 10px;
 }
 
 .legend-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 12px;
-  color: var(--muted);
-  font-size: 14px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 13px;
 }
 
 .legend-row span {
@@ -356,6 +360,26 @@ label {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+}
+
+.legend-row em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 750;
+}
+
+.legend-row strong {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.legend-row small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .mini-card {
